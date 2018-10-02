@@ -74,7 +74,21 @@ if ( ! function_exists('njgt_add_auto_p_meta_box') ){
 
 	function add_auto_p_meta_box() {
 
-		add_meta_box("njgt-auto-p-meta-box", "Toggle Auto Paragraph", "njgt_auto_p_meta_box_markup", ['post','page'], "side", "low", null);
+		$cpt_args = array(
+
+			'public'   => true,
+			'_builtin' => false
+			
+		);
+
+
+		$custom_post_types = get_post_types($cpt_args);
+
+		$builtin_post_types = array('post','page');
+
+		$screen = array_merge($builtin_post_types,$custom_post_types);
+
+		add_meta_box("njgt-auto-p-meta-box", "Toggle Auto Paragraph", "njgt_auto_p_meta_box_markup", $screen, "side", "low", null);
 	}
 }
 
