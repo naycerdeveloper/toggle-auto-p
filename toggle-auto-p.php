@@ -6,6 +6,34 @@ Author: Naycer Tulas
 Author URI: https://naycertulas.com
 */
 
+if ( ! function_exists('njgt_is_edit_page')) {
+	function njgt_is_edit_page( $new_edit = null ) {
+
+		global $pagenow;
+
+		if (!is_admin()) return false;
+
+
+		if($new_edit == "edit") {
+
+			return in_array( $pagenow, array( 'post.php',  ) );
+
+		}
+
+		elseif($new_edit == "new") {
+
+			return in_array( $pagenow, array( 'post-new.php' ) );
+
+		}
+
+		else {
+
+			return in_array( $pagenow, array( 'post.php', 'post-new.php' ) );
+
+		}
+	}
+}
+
 if( ! function_exists('njgt_auto_p_meta_box_markup')) {
 
 	function njgt_auto_p_meta_box_markup() {
@@ -13,6 +41,29 @@ if( ! function_exists('njgt_auto_p_meta_box_markup')) {
 		wp_nonce_field(basename(__FILE__), "njgt_auto_p_nonce");
 
 		$autop = get_post_meta(get_the_ID(), 'njgt-no-auto-p',true);
+
+		echo '<pre>',var_dump($autop),'</pre>';
+
+		$checked = false;
+		
+		if (njgt_is_edit_page('new')) {
+
+			$post_type_setting = get_option('njgt-no-auto-p-'.get_post_type());
+
+			if ($post_type_setting == "true") {
+
+				$checked = true;
+
+			}
+
+		} elseif (njgt_is_edit_page('edit')) {
+
+			if ($autop == "true") {
+
+				$checked = true;
+
+			}
+		}
 
 		?>
 
@@ -22,7 +73,7 @@ if( ! function_exists('njgt_auto_p_meta_box_markup')) {
 
 			<label for="njgt-no-auto-p" class="switch"> 
 		
-				<input type="checkbox" value="true" name="njgt-no-auto-p" id="njgt-no-auto-p" <?php checked( $autop, "true" ); ?> >
+				<input type="checkbox" value="true" name="njgt-no-auto-p" id="njgt-no-auto-p" <?php if($checked) { echo "checked" ; } ?> >
 
 				<span class="slider round"></span>
 
@@ -59,6 +110,8 @@ if( ! function_exists('njgt_save_auto_p_meta_box')) {
 
 			$meta_box_checkbox_value = $_POST["njgt-no-auto-p"];
 
+		} else {
+			$meta_box_checkbox_value = "false";
 		}
 
 		update_post_meta($post_id, "njgt-no-auto-p", $meta_box_checkbox_value);
@@ -78,7 +131,7 @@ if ( ! function_exists('njgt_add_auto_p_meta_box') ){
 
 			'public'   => true,
 			'_builtin' => false
-			
+
 		);
 
 
@@ -126,3 +179,102 @@ function njgt_toggle_auto_admin_scripts() {
 }
 
 add_action( 'admin_enqueue_scripts', 'njgt_toggle_auto_admin_scripts' );
+
+if( ! function_exists('njgt_add_toggle_settings_page') ) {
+
+	function njgt_add_toggle_settings_page() {
+
+		add_options_page(__('Toggle Auto Paragaph Settings'), __('Toggle Auto Paragaph'), 'manage_options', 'njgt-toggle-autop-settings', 'njgt_toggle_autop_settings');
+
+	}
+
+}
+
+add_action('admin_menu', 'njgt_add_toggle_settings_page');
+
+if(! function_exists('njgt_toggle_autop_settings')){
+
+	function njgt_toggle_autop_settings() {
+
+		$cpt_args = array(
+			'public'   => true,
+			'_builtin' => false
+		);
+
+
+		$custom_post_types = get_post_types($cpt_args);
+
+		$builtin_post_types = array('post','page');
+
+		$all_post_types = array_merge($builtin_post_types,$custom_post_types);
+
+		if (!current_user_can('manage_options')) {
+
+			wp_die( __('You do not have sufficient permissions to access this page.') );
+
+		}
+
+
+		$hidden_field_name = 'mt_submit_hidden';
+
+
+		if( isset($_POST[ $hidden_field_name ]) && $_POST[ $hidden_field_name ] == 'Y' ) {
+
+		
+			 foreach ($all_post_types as $post_type):
+				update_option( 'njgt-no-auto-p-'.$post_type,$_POST['njgt-no-auto-p-'.$post_type]);
+			 endforeach;
+		
+
+			?>
+
+			<div class="updated"><p><strong><?php _e('Settings saved.'); ?></strong></p></div>
+
+			<?php
+
+		}
+
+		?>
+
+		<div class="wrap">
+
+			<h2>Toggle Auto Paragaph Settings</h2>	
+
+			<form name="form1" method="post" action="">
+
+				<input type="hidden" name="<?php echo $hidden_field_name; ?>" value="Y">
+
+				<h4><strong style="color:#b20000">Disable</strong> wpautop by default on the following post types (only affects new posts) : </h4>
+
+				<?php foreach ($all_post_types as $post_type): ?>
+
+					<?php $curr_val = get_option('njgt-no-auto-p-'.$post_type); ?>
+
+					<div class="njgt-toggle njgt-setting">
+
+						<span class="cpt"> <?php echo ucfirst($post_type); ?> </span>
+
+						<label for="njgt-no-auto-p-<?php echo $post_type; ?>" class="switch"> 
+
+							<input type="checkbox" value="true" name="njgt-no-auto-p-<?php echo $post_type; ?>" id="njgt-no-auto-p-<?php echo $post_type; ?>" <?php checked($curr_val, "true");?> >
+
+							<span class="slider round"></span>
+
+						</label>	
+
+					</div>
+
+				<?php endforeach; ?>
+
+				<hr />
+
+				<p class="submit"><input type="submit" name="Submit" class="button-primary" value="<?php esc_attr_e('Save Changes') ?>" /></p>
+
+			</form>
+
+		</div>
+
+		<?php
+	}
+
+}
